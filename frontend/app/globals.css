@@ -1,0 +1,239 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  scroll-padding-block: 88px 96px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #111418 0%, #0d1014 100%);
+  color: #eef3f7;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.focus-ring {
+  @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-civic focus-visible:ring-offset-2 focus-visible:ring-offset-surface;
+}
+
+.city-map-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr);
+  align-items: stretch;
+  gap: 0;
+  margin-top: 24px;
+  border-block: 1px solid #2a313a;
+}
+
+.city-map-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 410px;
+  background-color: #354149;
+  background-image:
+    linear-gradient(#ffffff0d 1px, transparent 1px),
+    linear-gradient(90deg, #ffffff0d 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.city-map-svg {
+  display: block;
+  width: 100%;
+  height: 410px;
+  padding: 22px 38px;
+}
+
+.city-map-image {
+  opacity: 0;
+  transition: opacity 260ms ease-in-out;
+}
+
+.city-map-image[data-active="true"] {
+  opacity: 1;
+}
+
+.city-map-region {
+  fill: transparent;
+  stroke: none;
+  cursor: pointer;
+}
+
+.city-map-region:focus {
+  outline: none;
+}
+
+.city-map-region:focus-visible {
+  stroke: #3dd6a3;
+  stroke-width: 2px;
+}
+
+.city-map-index {
+  position: absolute;
+  top: 20px;
+  left: 22px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: #eef3f7;
+  font-size: 22px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.city-map-index span {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.city-map-districts {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 20px 24px 14px;
+  background: #171d23;
+}
+
+.city-map-kicker,
+.city-map-table-heading {
+  color: #99a4b1;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.city-map-score {
+  min-height: 92px;
+  border-bottom: 1px solid #39434b;
+}
+
+.city-map-score-value {
+  color: #eef3f7;
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+.city-map-table-heading {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 4px 6px;
+}
+
+.city-map-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.city-map-district {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 6px 4px;
+  border-bottom: 1px solid #39434b;
+  color: #eef3f7;
+  text-align: left;
+}
+
+.city-map-row-number {
+  width: 23px;
+  flex-shrink: 0;
+  color: #99a4b1;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.city-map-row-name {
+  min-width: 0;
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.city-map-row-count {
+  flex-shrink: 0;
+  color: #99a4b1;
+  font-size: 11px;
+}
+
+.city-map-row-score {
+  min-width: 44px;
+  text-align: right;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.city-map-row-check {
+  display: flex;
+  width: 18px;
+  flex-shrink: 0;
+  color: #3dd6a3;
+}
+
+.city-map-district[aria-pressed="true"] .city-map-row-name {
+  color: #3dd6a3;
+}
+
+.city-map-district:focus-visible,
+.city-map-clear:focus-visible {
+  outline: 2px solid #3dd6a3;
+  outline-offset: -2px;
+}
+
+.city-map-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 34px;
+  margin-top: auto;
+  padding: 8px 4px 0;
+  color: #eef3f7;
+  font-size: 12px;
+}
+
+.city-map-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  color: #99a4b1;
+}
+
+.city-map-city-count {
+  padding: 2px 4px 0;
+  color: #99a4b1;
+  font-size: 11px;
+}
+
+@media (max-width: 639px) {
+  .city-map-section { grid-template-columns: minmax(0, 1fr); }
+  .city-map-stage { min-height: 280px; }
+  .city-map-svg { height: 280px; padding: 10px 30px; }
+  .city-map-districts { padding: 14px 16px 12px; }
+  .city-map-score { min-height: 70px; }
+  .city-map-score-value { font-size: 34px; }
+  .city-map-table-heading { padding-top: 10px; }
+  .city-map-district { min-height: 42px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .city-map-image { transition: none; }
+}

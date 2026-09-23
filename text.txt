@@ -1,0 +1,2379 @@
+Ты — senior full-stack engineer, software architect и AI engineer. Твоя задача — самостоятельно реализовать с нуля полностью рабочий hackathon-проект **«Аким на 5 часов» — AI-симулятор управления городом Астана**.
+
+Не ограничивайся scaffold, моками, псевдокодом или TODO. Создай реальные файлы, реализуй бизнес-логику, API, UI, тесты и документацию. В конце самостоятельно запусти доступные проверки, исправь найденные ошибки и доведи проект до состояния, когда его можно запустить по README.
+
+# 1. Главная цель
+
+Нужно создать интерактивный AI-симулятор, в котором пользователь выступает в роли акима/городского управленца.
+
+У всех пользователей одинаковые:
+
+* исходные данные города;
+* виртуальный бюджет;
+* каталог мероприятий.
+
+Пользователь обязан принять **ровно 5 управленческих решений**.
+
+Каждое решение относится к одному из направлений:
+
+1. транспорт;
+2. экология/озеленение;
+3. социальная инфраструктура;
+4. безопасность;
+5. городские сервисы.
+
+После выбора решений система должна:
+
+* проверить валидность сценария;
+* проверить бюджет;
+* применить эффекты выбранных мероприятий;
+* учесть лаг реализации;
+* учесть синергии;
+* учесть несовместимости;
+* пересчитать показатели районов;
+* рассчитать Astana Quality of Life Score;
+* показать изменение относительно baseline;
+* показать, какие районы и показатели улучшились;
+* выявить слабые места;
+* показать вклад решений;
+* передать уже рассчитанные данные AI-модулю;
+* получить понятное управленческое объяснение;
+* дать рекомендации по улучшению сценария.
+
+**LLM никогда не рассчитывает Score самостоятельно.**
+
+Все числа рассчитывает только deterministic simulation engine.
+
+LLM получает готовый JSON с результатами и только интерпретирует его.
+
+---
+
+# 2. Структура репозитория
+
+В корне проекта обязательно должны быть:
+
+backend/
+frontend/
+README.md
+.gitignore
+.env.example
+
+Можно добавить:
+
+docker-compose.yml
+Makefile
+docs/
+
+Но основные приложения должны находиться именно в:
+
+backend/
+frontend/
+
+---
+
+# 3. Technology Stack
+
+## Backend
+
+Используй:
+
+* Python;
+* Django;
+* Django REST Framework;
+* django-cors-headers;
+* pytest;
+* pytest-django.
+
+Архитектуру сделай модульной.
+
+Для локального hackathon-запуска проект должен по умолчанию работать на SQLite без необходимости устанавливать PostgreSQL.
+
+При этом архитектура Django должна позволять впоследствии переключиться на PostgreSQL через environment variables.
+
+## Frontend
+
+Используй:
+
+* Next.js;
+* App Router;
+* TypeScript;
+* Tailwind CSS;
+* Recharts для аналитических графиков;
+* Lucide Icons либо аналогичный лёгкий icon set.
+
+Можно использовать небольшую UI-библиотеку, если это действительно улучшает интерфейс, но не превращай проект в набор плохо согласованных сторонних компонентов.
+
+Все данные симуляции frontend получает через backend API.
+
+Не дублируй calculation engine на frontend.
+
+Frontend может выполнять предварительные UX-проверки, но **backend является единственным authoritative source** для валидации и расчётов.
+
+---
+
+# 4. Концепция интерфейса
+
+Название продукта:
+
+# AKIM OS
+
+Подзаголовок:
+
+**«Аким на 5 часов»**
+
+Это должен выглядеть не как обычная учебная форма, а как современный цифровой штаб управления городом.
+
+Визуальная концепция:
+
+* городской command center;
+* premium gov-tech dashboard;
+* минимализм;
+* крупная типографика;
+* тёмный или нейтральный фон;
+* аккуратные glass/soft-card элементы;
+* высокий визуальный контраст;
+* качественные анимации;
+* хорошая адаптивность.
+
+Не перегружать экран.
+
+Главная идея интерфейса:
+
+> Пользователь должен чувствовать, что принимает реальные управленческие решения для города.
+
+---
+
+# 5. Основной пользовательский сценарий
+
+Создай основной маршрут:
+
+/simulator
+
+Пользователь видит:
+
+### Верхняя панель
+
+* название AKIM OS;
+* Scenario status;
+* бюджет `100`;
+* потрачено;
+* осталось;
+* число решений `X / 5`.
+
+### Левая/центральная зона
+
+Краткий обзор пяти районов:
+
+* Есиль;
+* Алматы;
+* Сарыарка;
+* Байконур;
+* Нура.
+
+Показывай их исходный районный Score.
+
+Особенно визуально обозначай слабые показатели.
+
+### Панель решений
+
+Пользователь добавляет мероприятия.
+
+Для каждого мероприятия показывать:
+
+* ID;
+* название;
+* направление;
+* стоимость;
+* лаг;
+* краткие эффекты;
+* тип: район / город.
+
+Для районных мероприятий пользователь обязательно выбирает район.
+
+Должны быть хорошо видны:
+
+* стоимость;
+* оставшийся бюджет;
+* количество выбранных решений;
+* ограничения;
+* конфликты;
+* доступные направления.
+
+Если мера недоступна из-за уже выбранной несовместимой меры, объяснять причину.
+
+### Решений должно быть ровно 5
+
+Показывать 5 визуальных слотов решений.
+
+Например:
+
+Decision 01
+Decision 02
+Decision 03
+Decision 04
+Decision 05
+
+После заполнения всех пяти и прохождения validator становится доступной кнопка:
+
+**SIMULATE CITY**
+
+---
+
+# 6. Исходный бюджет
+
+BUDGET = 100
+
+Остаток:
+
+* не сгорает;
+* не повышает Score;
+* просто показывается пользователю.
+
+Нельзя превысить бюджет.
+
+---
+
+# 7. Индикаторы
+
+Все показатели находятся на шкале:
+
+0–100
+
+Чем больше — тем лучше.
+
+Индикаторы:
+
+T1 — Транспорт — Разгрузка дорог
+T2 — Транспорт — Доступность общественного транспорта
+
+E1 — Экология — Озеленение
+E2 — Экология — Качество воздуха
+
+S1 — Соцсфера — Школы и детсады
+S2 — Соцсфера — Поликлиники и первичная медпомощь
+
+B1 — Безопасность — Безопасность улиц
+B2 — Безопасность — Безопасность дорожного движения
+
+C1 — Сервисы — Надёжность ЖКХ
+C2 — Сервисы — Скорость решения обращений жителей
+
+---
+
+# 8. Значения показателей
+
+Используй следующие данные как единственный официальный baseline dataset.
+
+## Есиль
+
+population_share = 0.27
+
+T1 = 45
+T2 = 62
+E1 = 68
+E2 = 72
+S1 = 48
+S2 = 55
+B1 = 78
+B2 = 60
+C1 = 75
+C2 = 70
+
+D = 62.99
+
+Профиль:
+
+«Богатый район, но с пробками на мостах и переполненными школами.»
+
+## Алматы
+
+population_share = 0.24
+
+T1 = 40
+T2 = 75
+E1 = 50
+E2 = 55
+S1 = 60
+S2 = 65
+B1 = 62
+B2 = 52
+C1 = 50
+C2 = 60
+
+D = 57.06
+
+Профиль:
+
+«Старый ЖКХ и пробки.»
+
+## Сарыарка
+
+population_share = 0.20
+
+T1 = 50
+T2 = 70
+E1 = 42
+E2 = 40
+S1 = 62
+S2 = 68
+B1 = 58
+B2 = 55
+C1 = 45
+C2 = 55
+
+D = 54.65
+
+Профиль:
+
+«Смог от частного сектора, слабое озеленение.»
+
+## Байконур
+
+population_share = 0.13
+
+T1 = 52
+T2 = 68
+E1 = 55
+E2 = 50
+S1 = 58
+S2 = 60
+B1 = 52
+B2 = 58
+C1 = 55
+C2 = 58
+
+D = 56.63
+
+Профиль:
+
+«Середняк без ярких перекосов.»
+
+## Нура
+
+population_share = 0.16
+
+T1 = 55
+T2 = 40
+E1 = 45
+E2 = 65
+S1 = 38
+S2 = 35
+B1 = 55
+B2 = 50
+C1 = 60
+C2 = 50
+
+D = 49.18
+
+Профиль:
+
+«Главный аутсайдер по соцсфере и транспорту.»
+
+---
+
+# 9. Вес показателей
+
+Используй строго:
+
+T1 = 0.10
+T2 = 0.10
+E1 = 0.09
+E2 = 0.11
+S1 = 0.11
+S2 = 0.11
+B1 = 0.09
+B2 = 0.09
+C1 = 0.10
+C2 = 0.10
+
+Сумма = 1.
+
+Агрегированные веса направлений:
+
+transport = 0.20
+ecology = 0.20
+social = 0.22
+safety = 0.18
+services = 0.20
+
+---
+
+# 10. Каталог мероприятий
+
+Горизонт:
+
+H = 8 кварталов.
+
+Эффект мероприятия с лагом L:
+
+realized_effect = full_effect × (8 - L) / 8
+
+## M1
+
+direction: transport
+name: Выделенные полосы для автобусов
+type: district
+cost: 18
+lag: 2
+
+effects:
+
+T1 +6
+T2 +9
+
+---
+
+## M2
+
+direction: transport
+name: Умные светофоры (адаптивное управление)
+type: city
+cost: 22
+lag: 2
+
+effects:
+
+T1 +4
+B2 +3
+
+---
+
+## M3
+
+direction: transport
+name: Линия ЛРТ / расширение
+type: district
+cost: 30
+lag: 4
+
+effects:
+
+T1 +16
+T2 +20
+E2 +4
+
+---
+
+## M4
+
+direction: ecology
+name: Парк / сквер
+type: district
+cost: 15
+lag: 2
+
+effects:
+
+E1 +12
+E2 +3
+B1 +2
+
+---
+
+## M5
+
+direction: ecology
+name: Перевод частного сектора на чистое топливо
+type: district
+cost: 25
+lag: 3
+
+effects:
+
+E2 +14
+C1 +4
+
+---
+
+## M6
+
+direction: ecology
+name: Городская программа озеленения и ветрозащитных полос
+type: city
+cost: 20
+lag: 4
+
+effects:
+
+E1 +5
+E2 +3
+
+---
+
+## M7
+
+direction: social
+name: Школа + детсад (модульное строительство)
+type: district
+cost: 24
+lag: 3
+
+effects:
+
+S1 +16
+
+---
+
+## M8
+
+direction: social
+name: Центр семейного здоровья / поликлиника
+type: district
+cost: 20
+lag: 3
+
+effects:
+
+S2 +14
+
+---
+
+## M9
+
+direction: social
+name: Дворовые спорт-хабы
+type: district
+cost: 10
+lag: 1
+
+effects:
+
+S1 +3
+S2 +3
+B1 +3
+
+---
+
+## M10
+
+direction: safety
+name: Освещение и камеры — расширение Safe City
+type: district
+cost: 12
+lag: 1
+
+effects:
+
+B1 +12
+B2 +2
+
+---
+
+## M11
+
+direction: safety
+name: Безопасные переходы и школьные зоны
+type: district
+cost: 10
+lag: 1
+
+effects:
+
+B2 +12
+T1 -2
+
+Обязательно поддерживать отрицательные эффекты.
+
+---
+
+## M12
+
+direction: services
+name: Единая цифровая платформа обращений
+type: city
+cost: 14
+lag: 1
+
+effects:
+
+C2 +5
+
+---
+
+## M13
+
+direction: services
+name: Модернизация тепло- и водосетей
+type: district
+cost: 28
+lag: 4
+
+effects:
+
+C1 +18
+E2 +2
+
+---
+
+## M14
+
+direction: services
+name: Аварийные бригады ЖКХ + раннее оповещение
+type: city
+cost: 16
+lag: 1
+
+effects:
+
+C1 +5
+C2 +2
+
+---
+
+# 11. Синергии
+
+Синергии применяются после обычных эффектов мероприятий.
+
+Они НЕ масштабируются лагом.
+
+## M1 + M2
+
+Если выбраны обе меры:
+
+T1 +2
+
+только в районе, выбранном для M1.
+
+## M10 + M12
+
+Если выбраны обе меры:
+
+B1 +2
+
+только в районе M10.
+
+## M5 + M6
+
+Если выбраны обе меры:
+
+E2 +2
+
+только в районе M5.
+
+Синергия должна отображаться отдельно от обычных эффектов в calculation breakdown.
+
+---
+
+# 12. Несовместимости
+
+## M1 и M3
+
+Нельзя выбрать одновременно вообще, независимо от районов.
+
+Либо BRT, либо LRT.
+
+## M4 и M7
+
+Можно использовать обе меры в сценарии только если они назначены разным районам.
+
+В одном и том же районе M4 + M7 запрещены.
+
+Причина:
+
+«Конфликт за городской участок.»
+
+## M5 и M13
+
+Можно использовать обе меры только в разных районах.
+
+В одном районе запрещены.
+
+Причина:
+
+«Дублирование инфраструктурной программы.»
+
+---
+
+# 13. Правила validator
+
+Validator должен быть отдельным pure business logic layer.
+
+Сценарий валиден только если одновременно выполняются все условия.
+
+### Правило 1
+
+Бюджет ≤ 100.
+
+### Правило 2
+
+Выбрано ровно 5 мероприятий.
+
+Не 4.
+
+Не 6.
+
+Ровно 5.
+
+### Правило 3
+
+Одно мероприятие нельзя выбрать несколько раз.
+
+IDs должны быть уникальными.
+
+### Правило 4
+
+Для district measure район обязателен.
+
+Допустимые районы:
+
+* Есиль
+* Алматы
+* Сарыарка
+* Байконур
+* Нура
+
+### Правило 5
+
+Для city measure район указывать нельзя.
+
+### Правило 6
+
+Максимум 2 мероприятия из одного направления.
+
+Например три social мероприятия запрещены.
+
+### Правило 7
+
+Проверять incompatibilities.
+
+### Правило 8
+
+При любой ошибке Score не рассчитывать.
+
+Ответ API должен содержать структурированный список ошибок.
+
+Пример:
+
+{
+"valid": false,
+"errors": [
+{
+"code": "BUDGET_EXCEEDED",
+"message": "...",
+"details": {}
+}
+]
+}
+
+Пользовательский интерфейс должен выводить понятное русское объяснение.
+
+---
+
+# 14. Calculation Engine
+
+Вынеси calculation engine отдельно от API views и Django ORM.
+
+Например:
+
+backend/apps/simulator/domain/
+engine.py
+validator.py
+scoring.py
+optimizer.py
+entities.py
+
+Engine должен быть максимально чистым и unit-testable.
+
+## Шаг 1 — baseline
+
+Создать копию исходных показателей.
+
+Никогда не мутировать глобальный dataset.
+
+## Шаг 2 — обычные эффекты
+
+Для каждого мероприятия:
+
+factor = (8 - lag) / 8
+
+effect_realized = effect_full × factor
+
+District measure применяется только к указанному району.
+
+City measure применяется ко всем пяти районам.
+
+## Шаг 3 — синергии
+
+Применить фиксированные synergy bonuses.
+
+## Шаг 4 — clipping
+
+Каждый показатель ограничить:
+
+0 ≤ indicator ≤ 100
+
+Использовать:
+
+clip(value, 0, 100)
+
+## Шаг 5 — District Score
+
+Для района d:
+
+D_d =
+0.10*T1 +
+0.10*T2 +
+0.09*E1 +
+0.11*E2 +
+0.11*S1 +
+0.11*S2 +
+0.09*B1 +
+0.09*B2 +
+0.10*C1 +
+0.10*C2
+
+## Шаг 6 — population-weighted city average
+
+D_avg = Σ population_share_d × D_d
+
+## Шаг 7 — weakest district
+
+D_min = min(D_d)
+
+## Шаг 8 — critical indicators
+
+N_crit — число комбинаций:
+
+district × indicator
+
+для которых итоговый показатель:
+
+indicator < 40
+
+СТРОГО меньше 40.
+
+Значение ровно 40 НЕ является critical.
+
+## Шаг 9 — Final Score
+
+Score =
+
+0.7 × D_avg
++
+0.3 × D_min
+-----------
+
+1.0 × N_crit
+
+Никаких дополнительных штрафов или бонусов не вводить.
+
+Не нормализовать формулу.
+
+---
+
+# 15. Контрольные значения
+
+Обязательно создать automated tests для этих значений.
+
+## Baseline
+
+District scores:
+
+Есиль = 62.99
+Алматы = 57.06
+Сарыарка = 54.65
+Байконур = 56.63
+Нура = 49.18
+
+D_avg:
+
+56.8624
+
+N_crit:
+
+2
+
+Потому что:
+
+Нура S1 = 38
+Нура S2 = 35
+
+Baseline Score:
+
+52.55768
+
+UI:
+
+52.56
+
+---
+
+# 16. Главный контрольный сценарий
+
+Решения:
+
+1. M7 → Нура
+2. M8 → Нура
+3. M10 → Нура
+4. M12 → city
+5. M5 → Сарыарка
+
+Стоимость:
+
+24 + 20 + 12 + 14 + 25 = 95
+
+Сценарий валиден.
+
+Срабатывает synergy:
+
+M10 + M12
+
+B1 +2 в Нуре.
+
+Результаты после simulation должны дать:
+
+Есиль district score = 63.4275
+Алматы = 57.4975
+Сарыарка = 56.3
+Байконур = 57.0675
+Нура = 52.9625
+
+D_avg:
+
+58.0776
+
+N_crit:
+
+0
+
+Final Score:
+
+56.54307
+
+На UI:
+
+56.54
+
+Improvement относительно baseline:
+
++3.98539
+
+На UI:
+
++3.99
+
+Это обязательный regression test.
+
+Если твой engine выдаёт другое значение — искать ошибку, а не менять expected result.
+
+---
+
+# 17. API
+
+Сделай versioned REST API.
+
+Prefix:
+
+/api/v1/
+
+Нужны как минимум следующие endpoints.
+
+## GET /api/v1/config/
+
+Вернуть:
+
+* budget;
+* horizon;
+* baseline score;
+* indicator metadata;
+* weights;
+* direction weights;
+* dataset version.
+
+## GET /api/v1/districts/
+
+Все районы и исходные показатели.
+
+## GET /api/v1/measures/
+
+Каталог 14 мероприятий:
+
+* id;
+* name;
+* direction;
+* type;
+* cost;
+* lag;
+* effects;
+* incompatibilities;
+* possible synergies.
+
+## POST /api/v1/scenarios/validate/
+
+Input:
+
+{
+"decisions": [
+{
+"measure_id": "M7",
+"district": "Нура"
+},
+{
+"measure_id": "M12",
+"district": null
+}
+]
+}
+
+Возвращает:
+
+* valid;
+* errors;
+* total_cost;
+* remaining_budget;
+* direction counts;
+* detected synergies.
+
+## POST /api/v1/scenarios/simulate/
+
+Принимает ровно такой же scenario payload.
+
+Если scenario invalid:
+
+HTTP 400.
+
+Если valid:
+
+вернуть подробный simulation result.
+
+Например:
+
+{
+"valid": true,
+"dataset_version": "...",
+"budget": {
+"total": 100,
+"spent": 95,
+"remaining": 5
+},
+"baseline_score": 52.55768,
+"score": 56.54307,
+"score_delta": 3.98539,
+"d_avg": 58.0776,
+"weakest_district": {
+"name": "...",
+"score": ...
+},
+"critical_count": 0,
+"districts": [...],
+"indicator_changes": [...],
+"measure_contributions": [...],
+"synergies": [...],
+"score_breakdown": {...}
+}
+
+`measure_contributions` должен позволять frontend объяснить, что конкретно сделало каждое решение.
+
+---
+
+# 18. Scenario persistence
+
+Реализуй Django models для сохранения сценариев.
+
+Например:
+
+Scenario
+
+* id
+* team_name nullable
+* created_at
+* total_cost
+* score
+* score_delta
+* valid
+* result JSON
+
+ScenarioDecision
+
+* scenario
+* measure_id
+* district nullable
+* order
+
+Порядок решения не должен влиять на Score, но order можно сохранить для UI.
+
+Не заставляй пользователя авторизоваться ради основного hackathon flow.
+
+---
+
+# 19. Compare mode
+
+Создай экран:
+
+/compare
+
+Пользователь должен иметь возможность сравнить минимум два сохранённых сценария.
+
+Показывать:
+
+* Score;
+* Score delta;
+* стоимость;
+* остаток бюджета;
+* D_avg;
+* weakest district;
+* critical indicators;
+* показатели районов;
+* направления инвестиций.
+
+Добавь visual comparison:
+
+* bar chart;
+* radar chart по пяти направлениям;
+* district score comparison.
+
+Не объявляй один сценарий «объективно лучшим» только по красивому AI-тексту.
+
+Система должна показывать реальные trade-offs.
+
+---
+
+# 20. Deterministic Recommendation Engine
+
+AI не должен сам придумывать «математически лучший вариант».
+
+Создай deterministic improvement engine.
+
+Для текущего сценария попробуй допустимые локальные изменения:
+
+* заменить одно мероприятие другим;
+* для district measure поменять район.
+
+Каждый candidate:
+
+1. проходит validator;
+2. пересчитывается simulation engine;
+3. сравнивается с текущим Score.
+
+Верни несколько лучших **валидных альтернатив**.
+
+Например:
+
+{
+"recommendations": [
+{
+"change": "...",
+"score": 57.12,
+"delta_vs_current": 0.58,
+"reason_data": {...}
+}
+]
+}
+
+AI получает уже эти рассчитанные candidates и может объяснить их человеческим языком.
+
+Не позволяй LLM самостоятельно придумывать Score альтернатив.
+
+---
+
+# 21. AI architecture
+
+Чтобы хорошо раскрыть критерий hackathon «AI / agentic AI», реализуй AI layer отдельно от simulation engine.
+
+Структура примерно:
+
+backend/apps/ai_analysis/
+provider.py
+schemas.py
+agents/
+equity_agent.py
+tradeoff_agent.py
+risk_agent.py
+strategy_agent.py
+orchestrator.py
+fallback.py
+
+Используй provider abstraction, чтобы модель можно было менять.
+
+API key должен храниться только на backend через environment variable.
+
+Никогда не передавать API key в Next.js browser bundle.
+
+Если AI provider/API key отсутствует, весь симулятор всё равно должен работать.
+
+В таком случае использовать deterministic fallback explanation.
+
+Не показывать пользователю stack trace или ошибку provider.
+
+---
+
+# 22. AI Agents
+
+Реализуй несколько специализированных analytical agents.
+
+## Equity Agent
+
+Получает готовые данные simulation result.
+
+Анализирует:
+
+* weakest district;
+* разрыв между районами;
+* critical indicators;
+* насколько сценарий помогает Нуре и другим слабым районам.
+
+Не пересчитывает значения.
+
+## Trade-off Agent
+
+Объясняет:
+
+* что улучшилось;
+* какими компромиссами это достигнуто;
+* какие направления получили мало внимания;
+* отрицательные эффекты вроде M11 → T1 -2.
+
+## Risk Agent
+
+Выделяет:
+
+* показатели около critical threshold;
+* районы с сохраняющимися проблемами;
+* большую концентрацию бюджета;
+* лаги долгосрочных проектов.
+
+Не выдумывает новые риски, не содержащиеся в данных.
+
+## Strategy Agent
+
+Получает deterministic candidate recommendations.
+
+Объясняет:
+
+* какая замена может улучшить сценарий;
+* какой район можно поддержать;
+* почему calculated alternative отличается.
+
+Никаких придуманных цифр.
+
+## Executive Synthesizer
+
+Получает выводы предыдущих агентов и составляет финальную записку акиму.
+
+Формат:
+
+* Итог;
+* Что сработало;
+* Главные компромиссы;
+* Риски;
+* Что можно изменить;
+* Короткий вывод.
+
+Ответ должен быть на русском языке.
+
+Не делай текст чрезмерно длинным.
+
+---
+
+# 23. AI safety against hallucinated numbers
+
+В system prompt AI-модуля обязательно объясни:
+
+* нельзя самостоятельно вычислять Score;
+* нельзя менять предоставленные числа;
+* нельзя придумывать мероприятия;
+* нельзя придумывать районы;
+* нельзя придумывать эффекты;
+* все числа считаются trusted deterministic engine;
+* AI должен интерпретировать только переданный structured JSON.
+
+Рекомендации AI должны ссылаться только на реальные calculated candidates.
+
+---
+
+# 24. Results Screen
+
+После simulation сделать сильный presentation-ready экран.
+
+Наверху:
+
+# Astana Quality of Life Score
+
+Большая цифра:
+
+например:
+
+56.54
+
+Рядом:
+
+Baseline 52.56
+Δ +3.99
+
+Показывать также:
+
+* потраченный бюджет;
+* остаток;
+* D_avg;
+* weakest district;
+* critical indicators.
+
+---
+
+# 25. Before / After
+
+Для каждого района показать:
+
+Before → After
+
+Например:
+
+Нура
+49.18 → 52.96
+
+Также сделать таблицу/heatmap всех 10 индикаторов:
+
+T1
+T2
+E1
+E2
+S1
+S2
+B1
+B2
+C1
+C2
+
+Для каждого:
+
+* baseline;
+* after;
+* delta.
+
+Положительные изменения должны легко считываться визуально.
+
+Отрицательные также нельзя скрывать.
+
+---
+
+# 26. Radar / Direction chart
+
+Агрегируй показатели по пяти направлениям:
+
+Transport:
+T1 + T2
+
+Ecology:
+E1 + E2
+
+Social:
+S1 + S2
+
+Safety:
+B1 + B2
+
+Services:
+C1 + C2
+
+Построй radar chart:
+
+Baseline vs Scenario.
+
+Для визуального отображения можно использовать среднее внутри направления.
+
+Это только visualization metric.
+
+Оно НЕ заменяет официальный Score.
+
+---
+
+# 27. Budget visualization
+
+Добавь качественную budget allocation visualization.
+
+Показывать:
+
+100 TOTAL
+
+95 SPENT
+
+5 REMAINING
+
+И распределение стоимости по направлениям.
+
+---
+
+# 28. Decision Impact
+
+Создай блок:
+
+**Your 5 decisions**
+
+Для каждого решения показывать:
+
+* мероприятие;
+* район;
+* стоимость;
+* лаг;
+* фактически реализованную долю;
+* фактические изменения показателей.
+
+Например для lag=3:
+
+realization = 5/8 = 62.5%.
+
+Пользователь должен видеть, почему дорогое мероприятие с большим эффектом может за 8 кварталов дать не весь эффект.
+
+---
+
+# 29. Synergy visualization
+
+Если срабатывает синергия, показывать отдельную заметную карточку.
+
+Например:
+
+SYNERGY ACTIVATED
+
+Safe City + Digital Citizen Platform
+
+B1 +2 в Нуре
+
+Важно: synergy bonus не должен визуально смешиваться с lag-adjusted effect.
+
+---
+
+# 30. Critical indicator visualization
+
+Все indicator values < 40 отображать как critical.
+
+Ровно 40 не critical.
+
+Показывать:
+
+Critical indicators before: 2
+
+Critical indicators after: 0
+
+Если остались critical — перечислять их.
+
+---
+
+# 31. Scenario presets
+
+Добавь несколько демонстрационных preset-сценариев только как UX-функцию.
+
+Один preset должен быть:
+
+«Social Recovery»
+
+M7 → Нура
+M8 → Нура
+M10 → Нура
+M12 → city
+M5 → Сарыарка
+
+Но presets не должны изменять официальные правила.
+
+После загрузки preset пользователь всё ещё может менять решения.
+
+---
+
+# 32. Unexpected Events — optional advanced mode
+
+Добавь отдельный режим:
+
+**URBAN SHOCK MODE**
+
+Но:
+
+* он должен быть выключен по умолчанию;
+* не менять официальный основной benchmark;
+* быть явно обозначен как дополнительный demo mode.
+
+Можно создать небольшой deterministic каталог synthetic events, например:
+
+* сильный снегопад;
+* авария теплосети;
+* перекрытие моста;
+* эпизод сильного смога;
+* резкий рост обращений жителей.
+
+Event должен иметь явные deterministic effects.
+
+Например изменение конкретных индикаторов.
+
+Не смешивать Event Score с официальным baseline без визуального обозначения.
+
+Пользователь должен увидеть, как устойчив его сценарий к shock.
+
+Этот режим нужен как wow-feature, но не должен ломать основную логику.
+
+---
+
+# 33. City Pulse
+
+На dashboard создай компактный блок:
+
+CITY PULSE
+
+Показывай 5 направлений:
+
+Transport
+Ecology
+Social
+Safety
+Services
+
+И их состояние до/после.
+
+Цвет определяется числом, но не должен быть единственным способом понять состояние — показывай сами значения.
+
+---
+
+# 34. API error handling
+
+Backend должен возвращать понятные коды ошибок.
+
+Например:
+
+EXACTLY_FIVE_REQUIRED
+DUPLICATE_MEASURE
+BUDGET_EXCEEDED
+DISTRICT_REQUIRED
+DISTRICT_NOT_ALLOWED
+UNKNOWN_DISTRICT
+UNKNOWN_MEASURE
+DIRECTION_LIMIT_EXCEEDED
+GLOBAL_INCOMPATIBILITY
+DISTRICT_INCOMPATIBILITY
+
+Frontend должен отображать их человеческим текстом.
+
+---
+
+# 35. Dataset source
+
+Создай одну canonical source of truth для synthetic dataset.
+
+Например:
+
+backend/apps/simulator/data/city_config.json
+
+или эквивалентный versioned structured файл.
+
+Dataset version:
+
+ASTANA_SYNTH_V1
+
+Не размазывай исходные числа по десяткам файлов.
+
+Simulation engine должен получать их из одного source.
+
+---
+
+# 36. Backend tests
+
+Создай полноценные tests.
+
+Минимум проверить:
+
+### Baseline
+
+Score = 52.55768
+
+### Reference scenario
+
+Score = 56.54307
+
+### Budget
+
+> 100 запрещено.
+
+### Exactly five
+
+4 запрещено.
+
+6 запрещено.
+
+### Duplicate
+
+Два M7 запрещены.
+
+### Direction limit
+
+Три мероприятия одного направления запрещены.
+
+### District requirement
+
+M7 без района запрещён.
+
+### City measure
+
+M12 с районом запрещён.
+
+### M1 + M3
+
+Запрещены при любом выборе районов.
+
+### M4 + M7
+
+Разрешены в разных районах.
+
+Запрещены в одном районе.
+
+### M5 + M13
+
+Разрешены в разных районах.
+
+Запрещены в одном районе.
+
+### Synergy M1 + M2
+
+T1 +2 только в районе M1.
+
+### Synergy M10 + M12
+
+B1 +2 только в районе M10.
+
+### Synergy M5 + M6
+
+E2 +2 только в районе M5.
+
+### Lag calculation
+
+Проверить несколько мероприятий.
+
+### Negative effect
+
+M11 действительно уменьшает T1.
+
+### Clipping
+
+Значения не могут выйти:
+
+<0
+
+> 100
+
+### Critical threshold
+
+39.999 → critical.
+
+40 → не critical.
+
+### Order invariance
+
+Перестановка пяти одинаковых решений не меняет Score.
+
+### City measure
+
+Эффект применяется всем пяти районам.
+
+---
+
+# 37. API tests
+
+Проверить хотя бы:
+
+GET config
+
+GET districts
+
+GET measures
+
+POST validate valid scenario
+
+POST validate invalid scenario
+
+POST simulate valid scenario
+
+POST simulate invalid scenario
+
+JSON response schema.
+
+---
+
+# 38. Frontend quality
+
+В frontend обязательно:
+
+* TypeScript strict mode;
+* reusable components;
+* loading states;
+* API error state;
+* empty state;
+* responsive layout;
+* disabled state кнопок;
+* tooltips для сложных метрик;
+* хорошая accessibility;
+* keyboard-friendly inputs;
+* никакого `any`, если можно нормально типизировать.
+
+Создай shared TypeScript types для API responses.
+
+---
+
+# 39. Suggested frontend structure
+
+Можно использовать архитектуру примерно:
+
+frontend/
+app/
+page.tsx
+simulator/
+page.tsx
+compare/
+page.tsx
+methodology/
+page.tsx
+components/
+layout/
+simulator/
+results/
+charts/
+ui/
+lib/
+api.ts
+types.ts
+format.ts
+public/
+
+Не обязательно копировать буквально, если предложишь более чистую структуру.
+
+---
+
+# 40. Landing Page
+
+Создай эффектный `/`.
+
+Hero:
+
+AKIM OS
+
+Аким на 5 часов
+
+Текст примерно по смыслу:
+
+«У вас 100 единиц бюджета и два года. Примите пять решений, измените город и увидьте последствия.»
+
+CTA:
+
+**Начать симуляцию**
+
+Ниже можно показать три принципа:
+
+100 budget
+5 decisions
+1 city score
+
+И кратко объяснить задачу.
+
+---
+
+# 41. Methodology Page
+
+Создай:
+
+/methodology
+
+Покажи пользователю прозрачную методику.
+
+Нужно объяснить:
+
+* исходные показатели;
+* лаги;
+* веса;
+* district score;
+* population weighted score;
+* weakest district component;
+* critical penalty;
+* final Score formula;
+* синергии;
+* несовместимости.
+
+Показывай формулу читаемо.
+
+Это важно для доверия к продукту и оценки hackathon.
+
+---
+
+# 42. Transparency
+
+На Results Screen должна быть кнопка:
+
+**Как рассчитан Score?**
+
+Она открывает подробный breakdown:
+
+0.7 × D_avg
++ 0.3 × weakest district
+− N_crit
+
+с фактическими числами текущего scenario.
+
+Например:
+
+0.7 × 58.0776
++
+0.3 × 52.9625
+-------------
+
+0
+
+=
+56.54307
+
+UI может округлять.
+
+Raw calculation должен оставаться доступным.
+
+---
+
+# 43. README — критически важный критерий
+
+README должен быть профессиональным.
+
+Структура:
+
+# AKIM OS
+
+## What it is
+
+## Problem
+
+## Product demo flow
+
+## Architecture
+
+Добавить ASCII diagram, например:
+
+Next.js
+↓ REST
+Django / DRF
+↓
+Scenario Validator
+↓
+Deterministic Simulation Engine
+↓
+Score + breakdown
+↓
+AI Agents
+↓
+Explanation / Recommendations
+
+## Why AI is used
+
+Объяснить, что:
+
+* simulation deterministic;
+* LLM не считает Score;
+* AI используется для interpretation and recommendations;
+* это снижает hallucination risk.
+
+## Dataset
+
+## Score methodology
+
+## Synergies
+
+## Constraints
+
+## Backend setup
+
+## Frontend setup
+
+## Environment variables
+
+## Running tests
+
+## Example scenario
+
+## API
+
+## Project structure
+
+## Future development
+
+README должен позволять жюри запустить проект без общения с разработчиком.
+
+---
+
+# 44. Environment variables
+
+Создай `.env.example`.
+
+Не хранить секретные значения.
+
+Например backend variables:
+
+DEBUG=
+SECRET_KEY=
+ALLOWED_HOSTS=
+CORS_ALLOWED_ORIGINS=
+DATABASE_URL=
+LLM_API_KEY=
+LLM_MODEL=
+LLM_BASE_URL=
+
+Frontend:
+
+NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+
+Если выбран конкретный AI provider, названия variables можно аккуратно адаптировать.
+
+---
+
+# 45. No-AI-key behavior
+
+Если LLM_API_KEY отсутствует:
+
+* backend запускается;
+* frontend запускается;
+* simulation работает;
+* Score работает;
+* recommendations engine работает;
+* deterministic fallback explanation работает;
+* UI не падает.
+
+Показывать в metadata:
+
+ai_mode = "fallback"
+
+Если внешний AI подключён:
+
+ai_mode = "llm"
+
+---
+
+# 46. Health endpoint
+
+Создай:
+
+GET /api/v1/health/
+
+Пример:
+
+{
+"status": "ok",
+"dataset_version": "ASTANA_SYNTH_V1",
+"ai_enabled": false
+}
+
+---
+
+# 47. Persistence and demo reset
+
+Для hackathon важна воспроизводимость.
+
+Добавь management command:
+
+python manage.py seed_city_data
+
+Если canonical config вообще не требует записи baseline в DB, command может валидировать dataset/version и создавать необходимые demo records.
+
+Он должен быть idempotent.
+
+Также можно добавить:
+
+python manage.py reset_demo
+
+если это полезно.
+
+---
+
+# 48. Code quality
+
+Не складывай simulation formula во view.
+
+Не складывай всё в один `utils.py`.
+
+Раздели:
+
+* data/config;
+* validation;
+* calculation;
+* recommendations;
+* persistence;
+* API serialization;
+* AI interpretation.
+
+Используй type hints.
+
+Добавь docstrings там, где логика неочевидна.
+
+Не добавляй бессмысленные abstractions.
+
+---
+
+# 49. Performance
+
+Dataset маленький.
+
+Не нужна сложная distributed architecture.
+
+Не добавляй Redis/Celery просто ради технологий.
+
+AI calls могут выполняться после deterministic simulation.
+
+Основной Score должен возвращаться даже если AI provider недоступен.
+
+---
+
+# 50. Response timing architecture
+
+При POST `/simulate/` сначала рассчитать deterministic result.
+
+AI analysis лучше выделить отдельным endpoint либо позволить frontend запросить его после отображения результата.
+
+Предпочтительный UX:
+
+1. пользователь нажимает SIMULATE;
+2. Score появляется практически сразу;
+3. AI Analysis загружается отдельно;
+4. failure AI не уничтожает calculation result.
+
+Например:
+
+POST /api/v1/scenarios/simulate/
+
+POST /api/v1/scenarios/{id}/analysis/
+
+---
+
+# 51. Leaderboard — optional feature
+
+Если не мешает основному flow, реализуй:
+
+/leaderboard
+
+Сценарии команд:
+
+* team name;
+* Score;
+* spent budget;
+* weakest district;
+* timestamp.
+
+Но leaderboard — вторичный feature.
+
+Не жертвовать simulator ради него.
+
+---
+
+# 52. Presentation-ready mode
+
+Добавь кнопку на Results:
+
+**Presentation mode**
+
+Она должна открыть компактный экран/модальное представление:
+
+* Team / Scenario;
+* пять решений;
+* бюджет;
+* Score;
+* delta;
+* before/after;
+* главный trade-off;
+* AI summary.
+
+Это должно быть удобно показать на проекторе во время защиты.
+
+Не обязательно генерировать настоящий PPTX.
+
+---
+
+# 53. Important mathematical rules
+
+Особое внимание:
+
+1. лаг применяется только к обычным effects;
+2. synergy лагом НЕ масштабируется;
+3. effects суммируются;
+4. затем clipping;
+5. N_crit рассчитывается ПОСЛЕ всех effects и clipping;
+6. district weights = именно указанные веса;
+7. population weights = именно указанные доли;
+8. remaining budget не влияет на Score;
+9. порядок decisions не влияет;
+10. invalid scenario вообще не получает Score;
+11. значения должны храниться с нормальной precision;
+12. округление использовать только для display.
+
+Не округлять промежуточные эффекты до целого.
+
+---
+
+# 54. UI terminology
+
+Используй преимущественно русский интерфейс.
+
+Можно оставить отдельные product labels на английском:
+
+AKIM OS
+CITY PULSE
+SIMULATE CITY
+SYNERGY
+URBAN SHOCK
+
+Но управленческие объяснения — на русском.
+
+---
+
+# 55. Default simulator state
+
+При первом открытии:
+
+* решений 0/5;
+* spent = 0;
+* remaining = 100;
+* baseline city score = 52.56;
+* районы показывают baseline;
+* никакие effects ещё не применены.
+
+Не симулировать автоматически незаполненный scenario.
+
+---
+
+# 56. UX prevention
+
+Не полагайся только на ошибки после submit.
+
+Frontend должен заранее предотвращать очевидно невозможные действия:
+
+* шестое решение;
+* повтор меры;
+* бюджет >100;
+* третий проект одного направления;
+* M1 + M3;
+* конфликт одного района;
+* city measure с district.
+
+Но backend всё равно повторно валидирует всё независимо от frontend.
+
+---
+
+# 57. Measure cards
+
+Measure card должна визуально показывать:
+
+ID — M7
+
+Название
+
+Направление
+
+₿ 24 / cost 24
+
+Lag: 3Q
+
+Realized in horizon:
+
+62.5%
+
+Effects:
+
+S1 +16 full
+
+Projected at H=8:
+
+S1 +10
+
+Можно показывать projected effect frontend-side для информирования, но authoritative calculation всё равно backend.
+
+Лучше получать calculated metadata через API.
+
+---
+
+# 58. Baseline heatmap
+
+На simulator overview сделать baseline heatmap.
+
+Строки:
+
+районы.
+
+Столбцы:
+
+T1 ... C2.
+
+Пользователь сразу должен увидеть:
+
+Нура:
+S1 38
+S2 35
+
+как критические проблемы.
+
+Сарыарка E2=40 не является critical.
+
+---
+
+# 59. Scenario result narrative
+
+AI output должен быть конкретным.
+
+Плохо:
+
+«Сценарий способствует устойчивому развитию города.»
+
+Хорошо:
+
+«Сценарий устраняет оба критических социальных показателя Нуры: S1 и S2 больше не находятся ниже порога 40. Одновременно программа чистого топлива улучшает качество воздуха Сарыарки. Основной компромисс — значительная часть бюджета направлена на социальную инфраструктуру, тогда как транспортные проблемы Есиля остаются почти без изменений.»
+
+AI должен опираться только на calculation result.
+
+---
+
+# 60. Recommendation example
+
+Recommendation engine может обнаружить альтернативу.
+
+AI должен говорить:
+
+«Расчёт alternative engine показывает, что замена X на Y увеличивает Score с A до B.»
+
+Он НЕ должен говорить:
+
+«Я думаю, Score станет примерно B.»
+
+Все числа должны приходить из engine.
+
+---
+
+# 61. Tests before completion
+
+После реализации обязательно самостоятельно выполнить доступные команды.
+
+Backend:
+
+pytest
+
+или аналог.
+
+Также:
+
+python manage.py check
+
+Frontend:
+
+npm run lint
+
+npm run build
+
+если настроены tests:
+
+npm test
+
+Исправь все ошибки, возникшие из-за твоего кода.
+
+Не завершай задачу с красными тестами, если проблема исправима внутри репозитория.
+
+---
+
+# 62. Acceptance criteria
+
+Проект считается выполненным только если:
+
+* backend реально запускается;
+* frontend реально запускается;
+* API frontend/backend соединены;
+* baseline Score соответствует 52.55768;
+* reference scenario соответствует 56.54307;
+* бюджет >100 блокируется;
+* требуется ровно 5 решений;
+* duplicate measures запрещены;
+* direction limit работает;
+* district/city validation работает;
+* incompatibilities работают;
+* lag effects работают;
+* synergies работают;
+* negative effects работают;
+* Score меняется при смене решений;
+* результаты визуализируются;
+* AI получает уже рассчитанные numbers;
+* AI failure не ломает simulator;
+* README позволяет воспроизвести проект;
+* нет ключевых TODO;
+* нет hardcoded fake result screens.
+
+---
+
+# 63. Порядок твоей работы
+
+Работай самостоятельно, не останавливаясь после каждого этапа для подтверждения.
+
+Сначала:
+
+1. изучи текущее содержимое repository;
+2. создай архитектуру;
+3. реализуй canonical dataset;
+4. реализуй validator;
+5. реализуй calculation engine;
+6. сразу добавь tests формулы;
+7. реализуй Django API;
+8. реализуй persistence;
+9. реализуй recommendation engine;
+10. реализуй AI abstraction;
+11. реализуй frontend;
+12. подключи frontend к API;
+13. создай визуализации;
+14. создай README;
+15. запусти проверки;
+16. исправь ошибки;
+17. ещё раз проверь reference scenario.
+
+Если в repository уже есть полезный код, аккуратно используй его, но не сохраняй неправильную архитектуру только ради обратной совместимости.
+
+---
+
+# 64. Не делай
+
+Не делай пустые placeholder страницы.
+
+Не возвращай random Score.
+
+Не используй Math.random для simulation.
+
+Не заставляй LLM вычислять показатели.
+
+Не хардкодь только один демонстрационный scenario.
+
+Не делай frontend, который работает исключительно на mock data.
+
+Не игнорируй лаги.
+
+Не игнорируй отрицательный эффект M11.
+
+Не применяй lag к synergy.
+
+Не считай значение 40 critical.
+
+Не давай bonus за неиспользованный бюджет.
+
+Не разрешай меньше пяти решений.
+
+Не разрешай одно мероприятие несколько раз.
+
+Не разрешай 3 мероприятия одного направления.
+
+Не отправляй LLM API key в браузер.
+
+Не коммить secrets.
+
+Не скрывай calculation methodology от пользователя.
+
+---
+
+# 65. В конце работы
+
+После завершения не просто напиши «готово».
+
+Предоставь краткий engineering summary:
+
+1. что реализовано;
+2. структура backend;
+3. структура frontend;
+4. какие API endpoints созданы;
+5. какие AI agents реализованы;
+6. какие тесты проходят;
+7. полученный baseline Score;
+8. полученный reference scenario Score;
+9. точные команды запуска backend;
+10. точные команды запуска frontend;
+11. какие environment variables являются optional;
+12. если что-либо не удалось проверить — честно укажи конкретную причину.
+
+Самое важное: **фактически реализуй проект в файлах, а не просто опиши, как его можно было бы реализовать.**
+
+Начинай реализацию сейчас.
